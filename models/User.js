@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { hashPassword } = require('../schema');
+const { hashPassword } = require('../Schema');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },

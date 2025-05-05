@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
-const connectDB = require('./mongoConnector');
+const connectDB = require('./MongoConnector');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const { hashPassword, comparePassword, schemas } = require('./schema');
+const { hashPassword, comparePassword, schemas } = require('./Schema');
 
 const app = express();
 
