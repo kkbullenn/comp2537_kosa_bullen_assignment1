@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre('save', async function(next) {
-    // Only hash if password is modified (and not already hashed)
+   
     if (!this.isModified('password') || 
         this.password.startsWith('$2a$') || 
         this.password.startsWith('$2b$')) {

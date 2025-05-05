@@ -10,13 +10,12 @@ const { hashPassword, comparePassword, schemas } = require('./schema');
 const app = express();
 
 connectDB();
-
 const User = require('./models/User');
 
 app.use(session({
   secret: process.env.NODE_SESSION_SECRET,
   store: MongoStore.create({
-    client: mongoose.connection.getClient(), // Reuse existing connection
+    client: mongoose.connection.getClient(), 
     crypto: {
       secret: process.env.MONGODB_SESSION_SECRET
     }
@@ -44,7 +43,7 @@ function getHomePage(loggedIn = false, user = null) {
       ${loggedIn 
         ? `<h1>Hello, ${user.name}!</h1>
            <a href="/members">Go to Members Area</a>
-           <a href="/logout">Logout</a>`
+           <a href="/logout">Sign out</a>`
         : `<h1>Welcome</h1>
            <a href="/signup">Sign up</a>
            <a href="/login">Log in</a>`}
@@ -76,7 +75,7 @@ function getSignupPage(error = null) {
   `;
 }
 
-function getLoginPage(error = null) {
+function getLoginPage(error = null, preservedEmail = '') {
   return `
     <!DOCTYPE html>
     <html>
@@ -88,7 +87,7 @@ function getLoginPage(error = null) {
       <h1>Login</h1>
       ${error ? `<p class="error">${error}</p>` : ''}
       <form action="/loginSubmit" method="POST">
-        <label>Email: <input type="email" name="email" required></label>
+        <label>Email: <input type="email" name="email" value="${preservedEmail}" required></label>
         <label>Password: <input type="password" name="password" required></label>
         <button type="submit">Login</button>
       </form>
@@ -116,14 +115,14 @@ app.get('/login', (req, res) => {
 
 app.post('/signupSubmit', async (req, res) => {
   try {
-    // Let Mongoose handle the hashing via pre-save hook
+  
     const newUser = new User({
       name: req.body.name,
       email: req.body.email,
-      password: req.body.password // Pass plaintext - hook will hash it
+      password: req.body.password 
     });
     
-    await newUser.save(); // Triggers pre-save hook
+    await newUser.save(); 
     
     req.session.user = {
       id: newUser._id,
@@ -139,29 +138,25 @@ app.post('/signupSubmit', async (req, res) => {
 });
 
 app.post('/loginSubmit', async (req, res) => {
-  // Use login schema instead of user schema
-  const { error } = schemas.login.validate(req.body);
-  if (error) {
-    console.log('Validation error details:', error.details);
-    return res.send(getLoginPage('Invalid email/password'));
-  }
+  const { email, password } = req.body;
+  const { error } = schemas.login.validate({ email, password });
   
+  if (error) {
+    const errorMessage = error.details[0].context.label === 'email' 
+      ? 'Invalid email format' 
+      : 'Password is required';
+    return res.send(getLoginPage(errorMessage));
+  }
+
   try {
-    // Case-insensitive email search and trim inputs
-    const email = req.body.email.trim().toLowerCase();
-    const password = req.body.password.trim();
-    
-    const user = await User.findOne({ 
-      email: { $regex: new RegExp(`^${email}$`, 'i') }
-    });
-    
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
     if (!user) {
-      return res.send(getLoginPage('Invalid email/password'));
+      return res.send(getLoginPage('Email not found'));
     }
-    
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.send(getLoginPage('Invalid email/password'));
+      return res.send(getLoginPage('Incorrect password'));
     }
 
     req.session.user = {
@@ -170,10 +165,10 @@ app.post('/loginSubmit', async (req, res) => {
       email: user.email
     };
     
-    return res.redirect('/members');
+    res.redirect('/members');
   } catch (err) {
     console.error('Login error:', err);
-    return res.send(getLoginPage('An error occurred during login'));
+    res.send(getLoginPage('An error occurred during login'));
   }
 });
 
@@ -194,7 +189,7 @@ app.get('/members', (req, res) => {
     <body>
       <h1>Hello, ${req.session.user.name}!</h1>
       <img src="/images/image${randomImage}.jpg" alt="Random image">
-      <a href="/logout">Logout</a>
+      <a href="/logout">Sign out</a>
       <a href="/">Back to Home</a>
     </body>
     </html>
